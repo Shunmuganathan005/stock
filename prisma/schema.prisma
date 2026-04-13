@@ -1,0 +1,243 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth & RBAC ───────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  name           String
+  email          String    @unique
+  hashedPassword String
+  roleId         String
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  role     Role      @relation(fields: [roleId], references: [id])
+  sessions Session[]
+  accounts Account[]
+  sales    Sale[]    @relation("SaleCreatedBy")
+  payments Payment[] @relation("PaymentRecordedBy")
+}
+
+model Role {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String @default("")
+
+  users           User[]
+  rolePermissions RolePermission[]
+}
+
+model Permission {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String @default("")
+  module      String
+
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+// NextAuth required models
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Products & Tax ────────────────────────────────────────
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String  @default("")
+  isActive    Boolean @default(true)
+
+  products Product[]
+}
+
+model TaxRate {
+  id         String  @id @default(cuid())
+  name       String  @unique
+  percentage Float
+  isActive   Boolean @default(true)
+
+  products Product[]
+}
+
+enum Unit {
+  PIECE
+  BOX
+  KG
+  LITER
+  PACK
+  CARTON
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  name          String
+  description   String   @default("")
+  sku           String   @unique
+  barcode       String?
+  categoryId    String
+  taxRateId     String
+  costPrice     Float
+  sellingPrice  Float
+  stockQuantity Int      @default(0)
+  minStockLevel Int      @default(10)
+  unit          Unit     @default(PIECE)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category  Category   @relation(fields: [categoryId], references: [id])
+  taxRate   TaxRate    @relation(fields: [taxRateId], references: [id])
+  saleItems SaleItem[]
+  alerts    Alert[]
+}
+
+// ─── Customers ─────────────────────────────────────────────
+
+model Customer {
+  id           String  @id @default(cuid())
+  name         String
+  businessName String  @default("")
+  gstin        String?
+  phone        String  @default("")
+  email        String  @default("")
+  address      String  @default("")
+  isActive     Boolean @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sales Sale[]
+}
+
+// ─── Sales & Payments ──────────────────────────────────────
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  UPI
+  CHEQUE
+}
+
+model Sale {
+  id            String        @id @default(cuid())
+  saleNumber    String        @unique
+  customerId    String
+  saleDate      DateTime      @default(now())
+  subtotal      Float
+  taxTotal      Float
+  grandTotal    Float
+  paymentStatus PaymentStatus @default(UNPAID)
+  notes         String        @default("")
+  createdById   String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  customer  Customer   @relation(fields: [customerId], references: [id])
+  createdBy User       @relation("SaleCreatedBy", fields: [createdById], references: [id])
+  items     SaleItem[]
+  payments  Payment[]
+}
+
+model SaleItem {
+  id         String @id @default(cuid())
+  saleId     String
+  productId  String
+  quantity   Int
+  unitPrice  Float
+  taxRate    Float  // snapshot of tax percentage at time of sale
+  taxAmount  Float
+  totalPrice Float
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  saleId          String
+  amount          Float
+  paymentDate     DateTime      @default(now())
+  method          PaymentMethod @default(CASH)
+  referenceNumber String        @default("")
+  notes           String        @default("")
+  recordedById    String
+  createdAt       DateTime      @default(now())
+
+  sale       Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  recordedBy User @relation("PaymentRecordedBy", fields: [recordedById], references: [id])
+}
+
+// ─── Alerts ────────────────────────────────────────────────
+
+enum AlertType {
+  LOW_STOCK
+  OUT_OF_STOCK
+}
+
+model Alert {
+  id        String    @id @default(cuid())
+  productId String
+  type      AlertType
+  message   String
+  isRead    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+}
