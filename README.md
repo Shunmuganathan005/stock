@@ -1,6 +1,13 @@
-# Stock Management System
+<p align="center">
+  <img src="https://assets.vercel.com/image/upload/v1662130559/nextjs/Icon_dark_background.png" alt="Next.js" width="80" height="80" />
+</p>
 
-A warehouse/distribution stock and sales management system built for Indian businesses. Manage products, customers, sales, inventory alerts, and staff — all with organization-level data isolation.
+<h1 align="center">Stock Management System</h1>
+
+<p align="center">
+  A warehouse/distribution stock and sales management system built for Indian businesses.<br/>
+  Manage products, customers, sales, inventory alerts, and staff — all with organization-level data isolation.
+</p>
 
 ## Tech Stack
 
@@ -60,25 +67,6 @@ npm run lint      # Run ESLint
 1. **Schema** (`prisma/schema.prisma`) — You define your database models here. Prisma generates TypeScript types and a client from this file.
 2. **Client** (`@prisma/client`) — Auto-generated, type-safe query builder. Imported via `src/lib/db.ts`.
 3. **Migrations** — Prisma tracks schema changes and generates SQL migration files to evolve your database.
-
-### Database Models
-
-| Model | Purpose |
-|-------|---------|
-| User | App users with email, password, role |
-| Role | Named roles (Admin, Staff, Viewer) |
-| Permission | Granular permissions (products.view, sales.create, etc.) |
-| RolePermission | Maps roles to permissions (many-to-many) |
-| Session | NextAuth session storage |
-| Account | NextAuth OAuth accounts |
-| Category | Product categories |
-| TaxRate | GST tax rates (0%, 5%, 12%, 18%, 28%) |
-| Product | Items in stock with SKU, prices, quantity |
-| Customer | Business customers with GSTIN |
-| Sale | Sale records with line items and totals |
-| SaleItem | Individual items in a sale |
-| Payment | Payment records against sales |
-| Alert | Low stock / out of stock notifications |
 
 ### Prisma Commands
 
@@ -274,36 +262,6 @@ prisma/
 
 - **Email**: admin@stock.com
 - **Password**: admin123
-
----
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /api/register | Register a new user |
-| GET/POST | /api/products | List / create products |
-| GET/PUT/DELETE | /api/products/[id] | Get / update / delete a product |
-| GET/POST | /api/customers | List / create customers |
-| GET/PUT/DELETE | /api/customers/[id] | Get / update / delete a customer |
-| GET/POST | /api/sales | List / create sales |
-| GET | /api/sales/[id] | Get sale details |
-| GET | /api/sales/next-number | Get next sale number |
-| POST | /api/payments | Record a payment |
-| GET/POST | /api/categories | List / create categories |
-| PUT/DELETE | /api/categories/[id] | Update / delete a category |
-| GET/POST | /api/tax-rates | List / create tax rates |
-| PUT | /api/tax-rates/[id] | Update a tax rate |
-| GET | /api/alerts | List alerts |
-| GET | /api/alerts/unread-count | Get unread alert count |
-| PUT | /api/alerts/[id]/read | Mark alert as read |
-| PUT | /api/alerts/mark-all-read | Mark all alerts as read |
-| GET | /api/users | List users |
-| GET/PUT | /api/users/[id] | Get / update a user |
-| PUT | /api/users/change-password | Change password |
-| GET/POST | /api/roles | List / create roles |
-| GET/PUT/DELETE | /api/roles/[id] | Get / update / delete a role |
-| GET | /api/permissions | List all permissions |
 
 ## License
 
