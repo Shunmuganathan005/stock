@@ -1,42 +1,33 @@
 import { NextResponse } from "next/server";
-import { requirePermission, requireAuth, handleApiError } from "@/lib/permissions";
+import { withSession, withPermission } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import * as userService from "@/services/user.service";
 
-export async function GET() {
-  try {
-    await requireAuth();
+export const GET = withSession(async (request, user) => {
+  const roles = await userService.listRoles(user.organizationId);
 
-    const roles = await userService.listRoles();
+  return NextResponse.json({ success: true, data: roles });
+});
 
-    return NextResponse.json({ success: true, data: roles });
-  } catch (error) {
-    return handleApiError(error);
+export const POST = withPermission(PERMISSIONS.ROLES_MANAGE, async (request, user) => {
+  const body = await request.json();
+  const { name, description, permissionIds } = body;
+
+  if (!name || typeof name !== "string") {
+    return NextResponse.json(
+      { success: false, error: "Name is required" },
+      { status: 400 }
+    );
   }
-}
 
-export async function POST(request: Request) {
-  try {
-    await requirePermission(PERMISSIONS.ROLES_MANAGE);
-
-    const body = await request.json();
-    const { name, description, permissionIds } = body;
-
-    if (!name || typeof name !== "string") {
-      return NextResponse.json(
-        { success: false, error: "Name is required" },
-        { status: 400 }
-      );
-    }
-
-    const role = await userService.createRole({
+  const role = await userService.createRole(
+    {
       name,
       description: description || "",
       permissionIds: permissionIds || [],
-    });
+    },
+    user.organizationId
+  );
 
-    return NextResponse.json({ success: true, data: role }, { status: 201 });
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
+  return NextResponse.json({ success: true, data: role }, { status: 201 });
+});

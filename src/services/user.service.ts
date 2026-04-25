@@ -3,13 +3,15 @@ import bcrypt from "bcryptjs";
 
 // ─── Users ────────────────────────────────────────────────
 
-export async function listUsers() {
+export async function listUsers(orgId: string) {
   return prisma.user.findMany({
+    where: { organizationId: orgId },
     select: {
       id: true,
       name: true,
       email: true,
       isActive: true,
+      isOwner: true,
       createdAt: true,
       updatedAt: true,
       role: true,
@@ -18,7 +20,7 @@ export async function listUsers() {
   });
 }
 
-export async function getUser(id: string) {
+export async function getUser(id: string, orgId: string) {
   const user = await prisma.user.findUnique({
     where: { id },
     select: {
@@ -26,14 +28,16 @@ export async function getUser(id: string) {
       name: true,
       email: true,
       isActive: true,
+      isOwner: true,
       createdAt: true,
       updatedAt: true,
       role: true,
       roleId: true,
+      organizationId: true,
     },
   });
 
-  if (!user) {
+  if (!user || user.organizationId !== orgId) {
     throw new Error("User not found");
   }
 
@@ -42,11 +46,12 @@ export async function getUser(id: string) {
 
 export async function updateUser(
   id: string,
-  data: { name?: string; email?: string; roleId?: string; isActive?: boolean }
+  data: { name?: string; email?: string; roleId?: string; isActive?: boolean },
+  orgId: string
 ) {
   const user = await prisma.user.findUnique({ where: { id } });
 
-  if (!user) {
+  if (!user || user.organizationId !== orgId) {
     throw new Error("User not found");
   }
 
@@ -61,7 +66,7 @@ export async function updateUser(
 
   if (data.roleId) {
     const role = await prisma.role.findUnique({ where: { id: data.roleId } });
-    if (!role) {
+    if (!role || role.organizationId !== orgId) {
       throw new Error("Role not found");
     }
   }
@@ -74,6 +79,7 @@ export async function updateUser(
       name: true,
       email: true,
       isActive: true,
+      isOwner: true,
       createdAt: true,
       updatedAt: true,
       role: true,
@@ -112,8 +118,9 @@ export async function updatePassword(
 
 // ─── Roles ────────────────────────────────────────────────
 
-export async function listRoles() {
+export async function listRoles(orgId: string) {
   return prisma.role.findMany({
+    where: { organizationId: orgId },
     include: {
       _count: {
         select: { rolePermissions: true },
@@ -123,7 +130,7 @@ export async function listRoles() {
   });
 }
 
-export async function getRole(id: string) {
+export async function getRole(id: string, orgId: string) {
   const role = await prisma.role.findUnique({
     where: { id },
     include: {
@@ -135,20 +142,19 @@ export async function getRole(id: string) {
     },
   });
 
-  if (!role) {
+  if (!role || role.organizationId !== orgId) {
     throw new Error("Role not found");
   }
 
   return role;
 }
 
-export async function createRole(data: {
-  name: string;
-  description?: string;
-  permissionIds: string[];
-}) {
+export async function createRole(
+  data: { name: string; description?: string; permissionIds: string[] },
+  orgId: string
+) {
   const existing = await prisma.role.findUnique({
-    where: { name: data.name },
+    where: { name_organizationId: { name: data.name, organizationId: orgId } },
   });
 
   if (existing) {
@@ -169,6 +175,7 @@ export async function createRole(data: {
     data: {
       name: data.name,
       description: data.description ?? "",
+      organizationId: orgId,
       rolePermissions: {
         createMany: {
           data: data.permissionIds.map((permissionId) => ({ permissionId })),
@@ -187,17 +194,18 @@ export async function createRole(data: {
 
 export async function updateRole(
   id: string,
-  data: { name?: string; description?: string; permissionIds?: string[] }
+  data: { name?: string; description?: string; permissionIds?: string[] },
+  orgId: string
 ) {
   const role = await prisma.role.findUnique({ where: { id } });
 
-  if (!role) {
+  if (!role || role.organizationId !== orgId) {
     throw new Error("Role not found");
   }
 
   if (data.name && data.name !== role.name) {
     const existing = await prisma.role.findUnique({
-      where: { name: data.name },
+      where: { name_organizationId: { name: data.name, organizationId: orgId } },
     });
     if (existing) {
       throw new Error("A role with this name already exists");
@@ -251,10 +259,10 @@ export async function updateRole(
   });
 }
 
-export async function deleteRole(id: string) {
+export async function deleteRole(id: string, orgId: string) {
   const role = await prisma.role.findUnique({ where: { id } });
 
-  if (!role) {
+  if (!role || role.organizationId !== orgId) {
     throw new Error("Role not found");
   }
 

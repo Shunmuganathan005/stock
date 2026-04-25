@@ -1,26 +1,19 @@
 import { NextResponse } from "next/server";
-import { requireAuth, handleApiError } from "@/lib/permissions";
+import { withSession } from "@/lib/auth";
 import * as saleService from "@/services/sale.service";
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await requireAuth();
+export const GET = withSession(async (request, user) => {
+  const url = new URL(request.url);
+  const id = url.pathname.split("/").at(-1)!;
 
-    const { id } = await params;
-    const sale = await saleService.getSale(id);
+  const sale = await saleService.getSale(id, user.organizationId);
 
-    if (!sale) {
-      return NextResponse.json(
-        { success: false, error: "Sale not found" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ success: true, data: sale });
-  } catch (error) {
-    return handleApiError(error);
+  if (!sale) {
+    return NextResponse.json(
+      { success: false, error: "Sale not found" },
+      { status: 404 }
+    );
   }
-}
+
+  return NextResponse.json({ success: true, data: sale });
+});

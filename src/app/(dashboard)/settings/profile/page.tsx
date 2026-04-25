@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/hooks/use-session";
 import { toast } from "sonner";
 import { t } from "@/lib/locales";
 import { PageHeader } from "@/components/layout/page-header";
@@ -19,7 +19,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 
 export default function ProfilePage() {
-  const { data: session, status } = useSession();
+  const { user, isLoading } = useSession();
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -72,7 +72,7 @@ export default function ProfilePage() {
     });
   }
 
-  if (status === "loading") {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <PageHeader title={t("settings.profile.title")} description={t("settings.profile.description")} />
@@ -102,11 +102,11 @@ export default function ProfilePage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <Label className="text-muted-foreground">{t("common.name")}</Label>
-              <p className="font-medium">{session?.user?.name || "-"}</p>
+              <p className="font-medium">{user?.name || "-"}</p>
             </div>
             <div className="space-y-1">
               <Label className="text-muted-foreground">{t("common.email")}</Label>
-              <p className="font-medium">{session?.user?.email || "-"}</p>
+              <p className="font-medium">{user?.email || "-"}</p>
             </div>
           </div>
         </CardContent>

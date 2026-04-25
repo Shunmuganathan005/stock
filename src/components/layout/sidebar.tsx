@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/hooks/use-session";
 import {
   LayoutDashboard,
   Package,
@@ -53,9 +53,7 @@ interface SidebarProps {
 
 export function Sidebar({ permissions }: SidebarProps) {
   const pathname = usePathname();
-  const { data: session } = useSession();
-
-  const user = session?.user;
+  const { user } = useSession();
 
   const visibleSettingsItems = settingsNavItems.filter(
     (item) => !item.permission || permissions.includes(item.permission)

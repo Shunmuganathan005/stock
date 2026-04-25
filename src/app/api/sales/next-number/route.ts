@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAuth, handleApiError } from "@/lib/permissions";
+import { withSession } from "@/lib/auth";
 import * as saleService from "@/services/sale.service";
 
-export async function GET() {
-  try {
-    await requireAuth();
+export const GET = withSession(async (_request, user) => {
+  const nextNumber = await saleService.getNextSaleNumber(user.organizationId);
 
-    const nextNumber = await saleService.getNextSaleNumber();
-
-    return NextResponse.json({ success: true, data: { saleNumber: nextNumber } });
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
+  return NextResponse.json({ success: true, data: { saleNumber: nextNumber } });
+});

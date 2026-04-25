@@ -1,13 +1,13 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useSession } from "@/hooks/use-session";
 import type { PermissionName } from "@/lib/constants/permissions";
 
 export function usePermissions() {
-  const { data: session, status } = useSession();
+  const { user, isLoading, isAuthenticated } = useSession();
 
-  const permissions: string[] = session?.user?.permissions ?? [];
-  const role = session?.user?.role ?? null;
+  const permissions: string[] = user?.permissions ?? [];
+  const role = user ? { id: user.roleId, name: user.roleName } : null;
 
   function hasPermission(permission: PermissionName): boolean {
     return permissions.includes(permission);
@@ -27,7 +27,7 @@ export function usePermissions() {
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
-    isLoading: status === "loading",
-    isAuthenticated: status === "authenticated",
+    isLoading,
+    isAuthenticated,
   };
 }

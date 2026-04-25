@@ -9,14 +9,14 @@ interface RecordPaymentData {
   notes?: string;
 }
 
-export async function recordPayment(data: RecordPaymentData, userId: string) {
+export async function recordPayment(data: RecordPaymentData, userId: string, orgId: string) {
   const { saleId, amount, method, referenceNumber, notes } = data;
 
   if (amount <= 0) {
     throw new Error("Payment amount must be greater than zero");
   }
 
-  // Get sale with existing payments
+  // Get sale with existing payments — verify it belongs to this org
   const sale = await prisma.sale.findUnique({
     where: { id: saleId },
     include: {
@@ -24,7 +24,7 @@ export async function recordPayment(data: RecordPaymentData, userId: string) {
     },
   });
 
-  if (!sale) {
+  if (!sale || sale.organizationId !== orgId) {
     throw new Error("Sale not found");
   }
 
@@ -62,12 +62,12 @@ export async function recordPayment(data: RecordPaymentData, userId: string) {
   return payment;
 }
 
-export async function getSalePayments(saleId: string) {
+export async function getSalePayments(saleId: string, orgId: string) {
   const sale = await prisma.sale.findUnique({
     where: { id: saleId },
   });
 
-  if (!sale) {
+  if (!sale || sale.organizationId !== orgId) {
     throw new Error("Sale not found");
   }
 

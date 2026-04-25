@@ -12,14 +12,3 @@ export interface PaginatedResponse<T> {
   pageSize: number;
   totalPages: number;
 }
-
-export interface SessionUser {
-  id: string;
-  name: string;
-  email: string;
-  role: {
-    id: string;
-    name: string;
-  };
-  permissions: string[];
-}

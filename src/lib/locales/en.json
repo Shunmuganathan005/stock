@@ -72,7 +72,9 @@
     "emailPlaceholder": "you@example.com",
     "passwordPlaceholder": "Enter your password",
     "namePlaceholder": "Your full name",
-    "passwordMinChars": "At least 6 characters"
+    "passwordMinChars": "At least 6 characters",
+    "businessName": "Business Name",
+    "businessNamePlaceholder": "Your business or company name"
   },
   "dashboard": {
     "title": "Dashboard",

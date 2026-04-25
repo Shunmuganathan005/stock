@@ -19,6 +19,9 @@ const PERMISSIONS = [
   { name: "users.manage", description: "Manage users", module: "users" },
   { name: "roles.manage", description: "Manage roles", module: "roles" },
   { name: "settings.manage", description: "Manage settings", module: "settings" },
+  { name: "collections.view",   description: "View collection entries and summary", module: "collections" },
+  { name: "collections.create", description: "Create and edit collection entries",  module: "collections" },
+  { name: "collections.manage", description: "Manage salespersons, places, vendors", module: "collections" },
 ];
 
 const ROLES = {
@@ -32,12 +35,14 @@ const ROLES = {
       "dashboard.view", "products.view", "products.create", "products.edit",
       "customers.view", "customers.create", "customers.edit",
       "sales.view", "sales.create", "payments.record",
+      "collections.view", "collections.create",
     ],
   },
   Viewer: {
     description: "Read-only access",
     permissions: [
       "dashboard.view", "products.view", "customers.view", "sales.view",
+      "collections.view",
     ],
   },
 };
@@ -50,10 +55,12 @@ const TAX_RATES = [
   { name: "GST 28%", percentage: 28 },
 ];
 
+const CATEGORIES = ["Electronics", "Clothing", "Food & Beverages", "Office Supplies", "General"];
+
 async function main() {
   console.log("Seeding database...");
 
-  // Create permissions
+  // 1. Create global permissions
   for (const perm of PERMISSIONS) {
     await prisma.permission.upsert({
       where: { name: perm.name },
@@ -63,64 +70,64 @@ async function main() {
   }
   console.log("Permissions created");
 
-  // Create roles with permissions
+  // 2. Create default organization
+  const org = await prisma.organization.create({
+    data: { name: "Default Organization" },
+  });
+  console.log("Organization created");
+
+  // 3. Create roles scoped to org
+  const roleMap: Record<string, string> = {};
   for (const [roleName, roleData] of Object.entries(ROLES)) {
-    const role = await prisma.role.upsert({
-      where: { name: roleName },
-      update: { description: roleData.description },
-      create: { name: roleName, description: roleData.description },
+    const role = await prisma.role.create({
+      data: {
+        name: roleName,
+        description: roleData.description,
+        organizationId: org.id,
+      },
     });
+    roleMap[roleName] = role.id;
 
-    // Clear existing role permissions and re-create
-    await prisma.rolePermission.deleteMany({ where: { roleId: role.id } });
-
-    for (const permName of roleData.permissions) {
-      const permission = await prisma.permission.findUnique({
-        where: { name: permName },
-      });
-      if (permission) {
-        await prisma.rolePermission.create({
-          data: { roleId: role.id, permissionId: permission.id },
-        });
-      }
-    }
+    // Assign permissions
+    const permissions = await prisma.permission.findMany({
+      where: { name: { in: roleData.permissions } },
+      select: { id: true },
+    });
+    await prisma.rolePermission.createMany({
+      data: permissions.map((p) => ({
+        roleId: role.id,
+        permissionId: p.id,
+      })),
+    });
   }
   console.log("Roles created");
 
-  // Create default admin user
-  const adminRole = await prisma.role.findUnique({ where: { name: "Admin" } });
-  if (adminRole) {
-    const hashedPassword = await bcrypt.hash("admin123", 12);
-    await prisma.user.upsert({
-      where: { email: "admin@stock.com" },
-      update: {},
-      create: {
-        name: "Admin",
-        email: "admin@stock.com",
-        hashedPassword,
-        roleId: adminRole.id,
-      },
-    });
-    console.log("Admin user created (admin@stock.com / admin123)");
-  }
+  // 4. Create admin user in org
+  const hashedPassword = await bcrypt.hash("admin123", 12);
+  await prisma.user.create({
+    data: {
+      name: "Admin",
+      email: "admin@stock.com",
+      hashedPassword,
+      roleId: roleMap.Admin,
+      organizationId: org.id,
+      isOwner: true,
+    },
+  });
+  console.log("Admin user created (admin@stock.com / admin123)");
 
-  // Create tax rates
+  // 5. Create tax rates scoped to org
   for (const tax of TAX_RATES) {
-    await prisma.taxRate.upsert({
-      where: { name: tax.name },
-      update: {},
-      create: tax,
+    await prisma.taxRate.create({
+      data: { ...tax, organizationId: org.id },
     });
   }
   console.log("Tax rates created");
 
-  // Create sample categories
-  const categories = ["Electronics", "Clothing", "Food & Beverages", "Office Supplies", "General"];
-  for (const name of categories) {
-    await prisma.category.upsert({
-      where: { name },
-      update: {},
-      create: { name },
+  // 6. Create categories scoped to org
+  for (const name of CATEGORIES) {
+    await prisma.category.create({
+      data: { name, organizationId: org.id },
     });
   }
   console.log("Categories created");
