@@ -193,6 +193,10 @@ export default function CollectionDetailPage({
   function handleUpdate() {
     if (!collection) return;
     const submitItems = editItems.filter((i) => i.quantity > 0);
+    if (submitItems.length === 0) {
+      toast.error("Please enter at least one quantity.");
+      return;
+    }
     updateMutation.mutate({
       date: collection.date,
       salespersonId: collection.salesperson.id,
@@ -448,7 +452,7 @@ export default function CollectionDetailPage({
                         {/* Vendor subtotal */}
                         <TableRow className="bg-muted/30">
                           <TableCell
-                            colSpan={editMode ? 4 : 4}
+                            colSpan={4}
                             className="text-right text-sm text-muted-foreground font-medium"
                           >
                             {t("collections.subtotal")}
@@ -493,6 +497,9 @@ export default function CollectionDetailPage({
             <DialogDescription>{t("collections.confirmDelete")}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingOpen(false)}>
+              {t("common.cancel")}
+            </Button>
             <Button
               variant="destructive"
               onClick={() => deleteMutation.mutate()}

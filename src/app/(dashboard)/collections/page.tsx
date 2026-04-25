@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Plus, Download } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -100,21 +101,27 @@ export default function CollectionsPage() {
       const res = await fetch(`/api/collections?${params}`);
       if (!res.ok) throw new Error("Failed to fetch collections");
       const json = await res.json();
-      return json.data ?? [];
+      return json.data?.items ?? [];
     },
   });
 
   function handleExport() {
-    const exportParams = new URLSearchParams();
-    exportParams.set("startDate", exportStartDate);
-    exportParams.set("scope", exportScope);
-    if (exportScope === "salesperson" && exportSalespersonId) {
-      exportParams.set("salespersonId", exportSalespersonId);
+    if (!exportStartDate) {
+      toast.error("Please select a start date");
+      return;
     }
-    if (exportScope === "vendor" && exportVendorId) {
-      exportParams.set("vendorId", exportVendorId);
+    if (exportScope === "salesperson" && !exportSalespersonId) {
+      toast.error("Please select a salesperson for export");
+      return;
     }
-    window.open(`/api/collections/export?${exportParams}`, "_blank");
+    if (exportScope === "vendor" && !exportVendorId) {
+      toast.error("Please select a vendor for export");
+      return;
+    }
+    const params = new URLSearchParams({ startDate: exportStartDate, scope: exportScope });
+    if (exportScope === "salesperson" && exportSalespersonId) params.set("salespersonId", exportSalespersonId);
+    if (exportScope === "vendor" && exportVendorId) params.set("vendorId", exportVendorId);
+    window.open(`/api/collections/export?${params.toString()}`, "_blank");
   }
 
   return (
