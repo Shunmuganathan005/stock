@@ -32,7 +32,8 @@
     "paginationPage": "Page {page} of {totalPages}",
     "paginationTotal": "Showing page {page} of {totalPages} ({total} total)",
     "paginationTotalShort": "Page {page} of {totalPages} ({total} total)",
-    "optional": "optional"
+    "optional": "optional",
+    "confirmDelete": "Confirm Delete"
   },
   "brand": {
     "name": "StockPro",
@@ -543,6 +544,8 @@
     "backToSalespersons": "Back to Salespersons",
     "salespersonCreatedSuccess": "Salesperson created successfully",
     "salespersonUpdatedSuccess": "Salesperson updated successfully",
+    "salespersonDeletedSuccess": "Salesperson deleted successfully",
+    "deleteConfirm": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
     "placesUpdatedSuccess": "Places updated successfully",
     "assignedPlaces": "Assigned Places",
     "noPlacesAvailable": "No places available. Add places first.",

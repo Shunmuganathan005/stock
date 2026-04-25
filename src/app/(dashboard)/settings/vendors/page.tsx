@@ -119,7 +119,7 @@ export default function VendorsPage() {
   const [manageVendorId, setManageVendorId] = useState<string | null>(null);
   const [newProductId, setNewProductId] = useState("");
   const [newRate, setNewRate] = useState("");
-  const [pendingItems, setPendingItems] = useState<VendorProduct[]>([]);
+  const [pendingItems, setPendingItems] = useState<VendorProduct[] | null>(null);
 
   const { data: places = [] } = useQuery<Place[]>({
     queryKey: ["places"],
@@ -228,7 +228,7 @@ export default function VendorsPage() {
 
   function openManageProducts(vendor: Vendor) {
     setManageVendorId(vendor.id);
-    setPendingItems([]);
+    setPendingItems(null);
     setNewProductId("");
     setNewRate("");
     setManageOpen(true);
@@ -254,7 +254,7 @@ export default function VendorsPage() {
 
   // Manage products helpers
   function getCurrentItems(): VendorProduct[] {
-    if (pendingItems.length > 0) return pendingItems;
+    if (pendingItems !== null) return pendingItems;
     return vendorDetail?.products ?? [];
   }
 
@@ -335,19 +335,19 @@ export default function VendorsPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center">
+                <TableCell colSpan={canManage ? 5 : 4} className="py-8 text-center">
                   {t("vendors.loadingVendors")}
                 </TableCell>
               </TableRow>
             ) : isError ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-destructive">
+                <TableCell colSpan={canManage ? 5 : 4} className="py-8 text-center text-destructive">
                   {t("vendors.failedToLoad")}
                 </TableCell>
               </TableRow>
             ) : vendors.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={canManage ? 5 : 4} className="py-8 text-center text-muted-foreground">
                   {t("vendors.noVendorsFound")}
                 </TableCell>
               </TableRow>
@@ -491,7 +491,7 @@ export default function VendorsPage() {
         setManageOpen(open);
         if (!open) {
           setManageVendorId(null);
-          setPendingItems([]);
+          setPendingItems(null);
           setNewProductId("");
           setNewRate("");
         }

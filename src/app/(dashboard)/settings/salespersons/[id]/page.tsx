@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -220,7 +220,7 @@ export default function SalespersonDetailPage() {
     return acc;
   }, {});
 
-  const sortedDates = Object.keys(groupedHistory).sort();
+  const sortedDates = Object.keys(groupedHistory).sort().reverse();
 
   const grandTotal = history.reduce((sum, item) => sum + item.amount, 0);
 
@@ -359,7 +359,7 @@ export default function SalespersonDetailPage() {
                   const items = groupedHistory[dateKey];
                   const dayTotal = items.reduce((sum, item) => sum + item.amount, 0);
                   return (
-                    <>
+                    <React.Fragment key={dateKey}>
                       {items.map((item, idx) => (
                         <TableRow key={item.id}>
                           <TableCell className="text-muted-foreground">
@@ -379,7 +379,7 @@ export default function SalespersonDetailPage() {
                         </TableCell>
                         <TableCell className="text-right">{formatCurrency(dayTotal)}</TableCell>
                       </TableRow>
-                    </>
+                    </React.Fragment>
                   );
                 })}
                 <TableRow className="border-t-2 bg-muted/50 font-semibold">

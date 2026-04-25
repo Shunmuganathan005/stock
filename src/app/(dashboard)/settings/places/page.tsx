@@ -167,19 +167,19 @@ export default function PlacesPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={4} className="py-8 text-center">
+                <TableCell colSpan={canManage ? 4 : 3} className="py-8 text-center">
                   {t("places.loadingPlaces")}
                 </TableCell>
               </TableRow>
             ) : isError ? (
               <TableRow>
-                <TableCell colSpan={4} className="py-8 text-center text-destructive">
+                <TableCell colSpan={canManage ? 4 : 3} className="py-8 text-center text-destructive">
                   {t("places.failedToLoad")}
                 </TableCell>
               </TableRow>
             ) : places.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={canManage ? 4 : 3} className="py-8 text-center text-muted-foreground">
                   {t("places.noPlacesFound")}
                 </TableCell>
               </TableRow>

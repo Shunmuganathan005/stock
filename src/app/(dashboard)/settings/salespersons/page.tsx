@@ -26,7 +26,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import { Pencil, Plus, ChevronRight } from "lucide-react";
+import { Pencil, Plus, ChevronRight, Trash2 } from "lucide-react";
 import { t } from "@/lib/locales";
 
 interface Salesperson {
@@ -58,6 +58,8 @@ export default function SalespersonsPage() {
   const [editTarget, setEditTarget] = useState<Salesperson | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const { data: salespersons = [], isLoading, isError } = useQuery<Salesperson[]>({
     queryKey: ["salespersons"],
@@ -101,6 +103,20 @@ export default function SalespersonsPage() {
       queryClient.invalidateQueries({ queryKey: ["salespersons"] });
       setEditOpen(false);
       setEditTarget(null);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/salespersons/${id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error ?? "Failed to delete salesperson");
+    },
+    onSuccess: () => {
+      toast.success(t("salespersons.salespersonDeletedSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["salespersons"] });
+      setDeleteConfirmId(null);
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -184,13 +200,26 @@ export default function SalespersonsPage() {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       {canManage && (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={(e) => openEditDialog(sp, e)}
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={(e) => openEditDialog(sp, e)}
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirmId(sp.id);
+                            }}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="size-4 text-destructive" />
+                          </Button>
+                        </>
                       )}
                       <Button
                         variant="ghost"
@@ -292,6 +321,35 @@ export default function SalespersonsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirm Dialog */}
+      {(() => {
+        const target = salespersons.find((sp) => sp.id === deleteConfirmId);
+        return (
+          <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t("common.confirmDelete")}</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">
+                {target ? t("salespersons.deleteConfirm", { name: target.name }) : ""}
+              </p>
+              <DialogFooter>
+                <DialogClose render={<Button variant="outline" type="button" />}>
+                  {t("common.cancel")}
+                </DialogClose>
+                <Button
+                  variant="destructive"
+                  disabled={deleteMutation.isPending}
+                  onClick={() => deleteConfirmId && deleteMutation.mutate(deleteConfirmId)}
+                >
+                  {deleteMutation.isPending ? t("common.deleting") : t("common.delete")}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }
