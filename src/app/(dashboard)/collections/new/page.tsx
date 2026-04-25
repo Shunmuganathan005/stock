@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -75,37 +75,41 @@ export default function NewCollectionPage() {
     },
   });
 
-  const { isLoading: vendorProductsLoading } = useQuery<VendorProduct[]>({
+  const vendorProductsQuery = useQuery<VendorProduct[]>({
     queryKey: ["salesperson-vendor-products", salespersonId],
     queryFn: async () => {
       const res = await fetch(`/api/salespersons/${salespersonId}/vendor-products`);
       if (!res.ok) throw new Error("Failed to fetch vendor products");
       const json = await res.json();
-      const data: VendorProduct[] = json.data ?? [];
-      // Populate lineItems from the response
-      const items: LineItem[] = [];
-      for (const vp of data) {
-        for (const pp of vp.products) {
-          items.push({
-            placeId: vp.place.id,
-            placeName: vp.place.name,
-            vendorId: vp.vendor.id,
-            vendorName: vp.vendor.name,
-            productId: pp.productId,
-            productName: pp.product.name,
-            unit: pp.product.unit,
-            rate: pp.rate,
-            quantity: 0,
-            amount: 0,
-          });
-        }
-      }
-      setLineItems(items);
-      setRemovedItems({});
-      return data;
+      if (!json.success) throw new Error(json.error);
+      return json.data ?? [];
     },
     enabled: !!salespersonId,
   });
+
+  const vendorProductsLoading = vendorProductsQuery.isLoading;
+
+  // Populate line items when data loads (NOT inside queryFn)
+  useEffect(() => {
+    if (!vendorProductsQuery.data) return;
+    const items: LineItem[] = vendorProductsQuery.data.flatMap(
+      (group) =>
+        group.products.map((p) => ({
+          placeId: group.place.id,
+          placeName: group.place.name,
+          vendorId: group.vendor.id,
+          vendorName: group.vendor.name,
+          productId: p.productId,
+          productName: p.product.name,
+          unit: p.product.unit,
+          rate: p.rate,
+          quantity: 0,
+          amount: 0,
+        }))
+    );
+    setLineItems(items);
+    setRemovedItems({});
+  }, [vendorProductsQuery.data]);
 
   const createMutation = useMutation({
     mutationFn: async (payload: {

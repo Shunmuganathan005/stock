@@ -195,6 +195,7 @@ export default function CollectionsPage() {
                     <TableHead className="text-right">{t("collections.items")}</TableHead>
                     <TableHead className="text-right">{t("collections.totalQty")}</TableHead>
                     <TableHead className="text-right">{t("collections.totalAmount")}</TableHead>
+                    <TableHead className="w-12" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
