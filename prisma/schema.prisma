@@ -7,32 +7,61 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Organization (Tenant) ─────────────────────────────────
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  address   String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  roles        Role[]
+  categories   Category[]
+  taxRates     TaxRate[]
+  products     Product[]
+  customers    Customer[]
+  sales        Sale[]
+  alerts       Alert[]
+  salespersons Salesperson[]
+  places       Place[]
+  vendors      Vendor[]
+  collections  Collection[]
+}
+
 // ─── Auth & RBAC ───────────────────────────────────────────
 
 model User {
-  id             String    @id @default(cuid())
+  id             String   @id @default(cuid())
   name           String
-  email          String    @unique
+  email          String   @unique
   hashedPassword String
   roleId         String
-  isActive       Boolean   @default(true)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  organizationId String
+  isOwner        Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  role     Role      @relation(fields: [roleId], references: [id])
-  sessions Session[]
-  accounts Account[]
-  sales    Sale[]    @relation("SaleCreatedBy")
-  payments Payment[] @relation("PaymentRecordedBy")
+  role         Role         @relation(fields: [roleId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  sessions     Session[]
+  sales        Sale[]       @relation("SaleCreatedBy")
+  payments     Payment[]    @relation("PaymentRecordedBy")
 }
 
 model Role {
-  id          String @id @default(cuid())
-  name        String @unique
-  description String @default("")
+  id             String @id @default(cuid())
+  name           String
+  description    String @default("")
+  organizationId String
 
+  organization    Organization     @relation(fields: [organizationId], references: [id])
   users           User[]
   rolePermissions RolePermission[]
+
+  @@unique([name, organizationId])
 }
 
 model Permission {
@@ -54,7 +83,8 @@ model RolePermission {
   @@id([roleId, permissionId])
 }
 
-// NextAuth required models
+// ─── Session ───────────────────────────────────────────────
+
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
@@ -64,51 +94,32 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-}
-
 // ─── Products & Tax ────────────────────────────────────────
 
 model Category {
-  id          String  @id @default(cuid())
-  name        String  @unique
-  description String  @default("")
-  isActive    Boolean @default(true)
+  id             String  @id @default(cuid())
+  name           String
+  description    String  @default("")
+  isActive       Boolean @default(true)
+  organizationId String
 
-  products Product[]
+  organization Organization @relation(fields: [organizationId], references: [id])
+  products     Product[]
+
+  @@unique([name, organizationId])
 }
 
 model TaxRate {
-  id         String  @id @default(cuid())
-  name       String  @unique
-  percentage Float
-  isActive   Boolean @default(true)
+  id             String  @id @default(cuid())
+  name           String
+  percentage     Float
+  isActive       Boolean @default(true)
+  organizationId String
 
-  products Product[]
+  organization Organization @relation(fields: [organizationId], references: [id])
+  products     Product[]
+
+  @@unique([name, organizationId])
 }
 
 enum Unit {
@@ -121,43 +132,51 @@ enum Unit {
 }
 
 model Product {
-  id            String   @id @default(cuid())
-  name          String
-  description   String   @default("")
-  sku           String   @unique
-  barcode       String?
-  categoryId    String
-  taxRateId     String
-  costPrice     Float
-  sellingPrice  Float
-  stockQuantity Int      @default(0)
-  minStockLevel Int      @default(10)
-  unit          Unit     @default(PIECE)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  description    String   @default("")
+  sku            String
+  barcode        String?
+  categoryId     String
+  taxRateId      String
+  costPrice      Float
+  sellingPrice   Float
+  stockQuantity  Int      @default(0)
+  minStockLevel  Int      @default(10)
+  unit           Unit     @default(PIECE)
+  isActive       Boolean  @default(true)
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  category  Category   @relation(fields: [categoryId], references: [id])
-  taxRate   TaxRate    @relation(fields: [taxRateId], references: [id])
-  saleItems SaleItem[]
-  alerts    Alert[]
+  organization    Organization    @relation(fields: [organizationId], references: [id])
+  category        Category        @relation(fields: [categoryId], references: [id])
+  taxRate         TaxRate         @relation(fields: [taxRateId], references: [id])
+  saleItems       SaleItem[]
+  alerts          Alert[]
+  vendorProducts  VendorProduct[]
+  collectionItems CollectionItem[]
+
+  @@unique([sku, organizationId])
 }
 
 // ─── Customers ─────────────────────────────────────────────
 
 model Customer {
-  id           String  @id @default(cuid())
-  name         String
-  businessName String  @default("")
-  gstin        String?
-  phone        String  @default("")
-  email        String  @default("")
-  address      String  @default("")
-  isActive     Boolean @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  businessName   String   @default("")
+  gstin          String?
+  phone          String   @default("")
+  email          String   @default("")
+  address        String   @default("")
+  isActive       Boolean  @default(true)
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  sales Sale[]
+  organization Organization @relation(fields: [organizationId], references: [id])
+  sales        Sale[]
 }
 
 // ─── Sales & Payments ──────────────────────────────────────
@@ -176,23 +195,27 @@ enum PaymentMethod {
 }
 
 model Sale {
-  id            String        @id @default(cuid())
-  saleNumber    String        @unique
-  customerId    String
-  saleDate      DateTime      @default(now())
-  subtotal      Float
-  taxTotal      Float
-  grandTotal    Float
-  paymentStatus PaymentStatus @default(UNPAID)
-  notes         String        @default("")
-  createdById   String
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id             String        @id @default(cuid())
+  saleNumber     String
+  customerId     String
+  saleDate       DateTime      @default(now())
+  subtotal       Float
+  taxTotal       Float
+  grandTotal     Float
+  paymentStatus  PaymentStatus @default(UNPAID)
+  notes          String        @default("")
+  createdById    String
+  organizationId String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
-  customer  Customer   @relation(fields: [customerId], references: [id])
-  createdBy User       @relation("SaleCreatedBy", fields: [createdById], references: [id])
-  items     SaleItem[]
-  payments  Payment[]
+  organization Organization @relation(fields: [organizationId], references: [id])
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  createdBy    User         @relation("SaleCreatedBy", fields: [createdById], references: [id])
+  items        SaleItem[]
+  payments     Payment[]
+
+  @@unique([saleNumber, organizationId])
 }
 
 model SaleItem {
@@ -232,12 +255,117 @@ enum AlertType {
 }
 
 model Alert {
-  id        String    @id @default(cuid())
-  productId String
-  type      AlertType
-  message   String
-  isRead    Boolean   @default(false)
-  createdAt DateTime  @default(now())
+  id             String    @id @default(cuid())
+  productId      String
+  type           AlertType
+  message        String
+  isRead         Boolean   @default(false)
+  organizationId String
+  createdAt      DateTime  @default(now())
 
+  organization Organization @relation(fields: [organizationId], references: [id])
+  product      Product      @relation(fields: [productId], references: [id])
+}
+
+// ─── Collection Module ─────────────────────────────────────
+
+model Salesperson {
+  id             String   @id @default(cuid())
+  name           String
+  phone          String   @default("")
+  isActive       Boolean  @default(true)
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  places       SalespersonPlace[]
+  collections  Collection[]
+
+  @@unique([name, organizationId])
+}
+
+model Place {
+  id             String   @id @default(cuid())
+  name           String
+  isActive       Boolean  @default(true)
+  organizationId String
+  createdAt      DateTime @default(now())
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  vendors      Vendor[]
+  salespersons SalespersonPlace[]
+
+  @@unique([name, organizationId])
+}
+
+model SalespersonPlace {
+  salespersonId String
+  placeId       String
+
+  salesperson Salesperson @relation(fields: [salespersonId], references: [id], onDelete: Cascade)
+  place       Place       @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@id([salespersonId, placeId])
+}
+
+model Vendor {
+  id             String   @id @default(cuid())
+  name           String
+  placeId        String
+  isActive       Boolean  @default(true)
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization    Organization    @relation(fields: [organizationId], references: [id])
+  place           Place           @relation(fields: [placeId], references: [id])
+  products        VendorProduct[]
+  collectionItems CollectionItem[]
+
+  @@unique([name, placeId])
+}
+
+model VendorProduct {
+  vendorId  String
+  productId String
+  rate      Float
+
+  vendor  Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
+
+  @@id([vendorId, productId])
+}
+
+model Collection {
+  id             String   @id @default(cuid())
+  date           DateTime @db.Date
+  salespersonId  String
+  totalQuantity  Float    @default(0)
+  totalAmount    Float    @default(0)
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  salesperson  Salesperson      @relation(fields: [salespersonId], references: [id])
+  items        CollectionItem[]
+
+  @@unique([date, salespersonId, organizationId])
+}
+
+model CollectionItem {
+  id           String @id @default(cuid())
+  collectionId String
+  vendorId     String
+  productId    String
+  quantity     Float
+  rate         Float
+  amount       Float
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  vendor     Vendor     @relation(fields: [vendorId], references: [id])
+  product    Product    @relation(fields: [productId], references: [id])
+
+  @@unique([collectionId, vendorId, productId])
 }

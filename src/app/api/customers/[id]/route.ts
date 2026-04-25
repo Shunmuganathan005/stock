@@ -1,63 +1,42 @@
 import { NextResponse } from "next/server";
-import { requirePermission, requireAuth, handleApiError } from "@/lib/permissions";
+import { withSession, withPermission } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { updateCustomerSchema } from "@/lib/validations/customer";
 import * as customerService from "@/services/customer.service";
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await requireAuth();
+export const GET = withSession(async (request, user) => {
+  const url = new URL(request.url);
+  const id = url.pathname.split("/").at(-1)!;
 
-    const { id } = await params;
-    const customer = await customerService.getCustomer(id);
+  const customer = await customerService.getCustomer(id, user.organizationId);
 
-    if (!customer) {
-      return NextResponse.json(
-        { success: false, error: "Customer not found" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ success: true, data: customer });
-  } catch (error) {
-    return handleApiError(error);
+  if (!customer) {
+    return NextResponse.json(
+      { success: false, error: "Customer not found" },
+      { status: 404 }
+    );
   }
-}
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await requirePermission(PERMISSIONS.CUSTOMERS_EDIT);
+  return NextResponse.json({ success: true, data: customer });
+});
 
-    const { id } = await params;
-    const body = await request.json();
-    const data = updateCustomerSchema.parse(body);
+export const PUT = withPermission(PERMISSIONS.CUSTOMERS_EDIT, async (request, user) => {
+  const url = new URL(request.url);
+  const id = url.pathname.split("/").at(-1)!;
 
-    const customer = await customerService.updateCustomer(id, data);
+  const body = await request.json();
+  const data = updateCustomerSchema.parse(body);
 
-    return NextResponse.json({ success: true, data: customer });
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
+  const customer = await customerService.updateCustomer(id, data, user.organizationId);
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await requirePermission(PERMISSIONS.CUSTOMERS_DELETE);
+  return NextResponse.json({ success: true, data: customer });
+});
 
-    const { id } = await params;
-    await customerService.deleteCustomer(id);
+export const DELETE = withPermission(PERMISSIONS.CUSTOMERS_DELETE, async (request, user) => {
+  const url = new URL(request.url);
+  const id = url.pathname.split("/").at(-1)!;
 
-    return NextResponse.json({ success: true, message: "Customer deleted" });
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
+  await customerService.deleteCustomer(id, user.organizationId);
+
+  return NextResponse.json({ success: true, message: "Customer deleted" });
+});

@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAuth, handleApiError } from "@/lib/permissions";
+import { withSession } from "@/lib/auth";
 import * as alertService from "@/services/alert.service";
 
-export async function PUT() {
-  try {
-    await requireAuth();
+export const POST = withSession(async (_request, user) => {
+  await alertService.markAllAsRead(user.organizationId);
 
-    await alertService.markAllAsRead();
-
-    return NextResponse.json({ success: true, message: "All alerts marked as read" });
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
+  return NextResponse.json({ success: true, message: "All alerts marked as read" });
+});

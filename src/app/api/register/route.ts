@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/db";
 import { z } from "zod";
+import { prisma } from "@/lib/db";
+import { login } from "@/lib/auth";
+import { createOrganization } from "@/services/organization.service";
 
 const registerSchema = z.object({
+  businessName: z.string().min(1, "Business name is required"),
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -25,31 +27,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // Default to Staff role for new registrations
-    const staffRole = await prisma.role.findUnique({
-      where: { name: "Staff" },
+    const { user } = await createOrganization({
+      businessName: data.businessName,
+      ownerName: data.name,
+      ownerEmail: data.email,
+      ownerPassword: data.password,
     });
 
-    if (!staffRole) {
-      return NextResponse.json(
-        { success: false, error: "System not initialized. Please run database seed." },
-        { status: 500 }
-      );
-    }
+    // Auto-login after registration
+    await login(data.email, data.password);
 
-    const hashedPassword = await bcrypt.hash(data.password, 12);
-
-    const user = await prisma.user.create({
-      data: {
-        name: data.name,
-        email: data.email,
-        hashedPassword,
-        roleId: staffRole.id,
-      },
-      select: { id: true, name: true, email: true },
-    });
-
-    return NextResponse.json({ success: true, data: user }, { status: 201 });
+    return NextResponse.json(
+      { success: true, data: { id: user.id, name: user.name, email: user.email } },
+      { status: 201 }
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

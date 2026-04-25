@@ -1,19 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireAuth, handleApiError } from "@/lib/permissions";
+import { withSession } from "@/lib/auth";
 import * as alertService from "@/services/alert.service";
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await requireAuth();
+export const PUT = withSession(async (request, user) => {
+  const url = new URL(request.url);
+  const id = url.pathname.split('/').at(-2)!;
 
-    const { id } = await params;
-    const alert = await alertService.markAsRead(id);
+  const alert = await alertService.markAsRead(id, user.organizationId);
 
-    return NextResponse.json({ success: true, data: alert });
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
+  return NextResponse.json({ success: true, data: alert });
+});

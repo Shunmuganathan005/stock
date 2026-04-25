@@ -1,30 +1,23 @@
 import { NextResponse } from "next/server";
-import { requirePermission, handleApiError } from "@/lib/permissions";
+import { withPermission } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/constants/permissions";
-import { prisma } from "@/lib/db";
+import * as taxRateService from "@/services/tax-rate.service";
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await requirePermission(PERMISSIONS.SETTINGS_MANAGE);
+export const PUT = withPermission(PERMISSIONS.SETTINGS_MANAGE, async (request, user) => {
+  const url = new URL(request.url);
+  const id = url.pathname.split('/').at(-1)!;
+  const body = await request.json();
+  const { name, percentage, isActive } = body;
 
-    const { id } = await params;
-    const body = await request.json();
-    const { name, percentage, isActive } = body;
+  const taxRate = await taxRateService.updateTaxRate(
+    id,
+    {
+      ...(name !== undefined && { name }),
+      ...(percentage !== undefined && { percentage }),
+      ...(isActive !== undefined && { isActive }),
+    },
+    user.organizationId
+  );
 
-    const taxRate = await prisma.taxRate.update({
-      where: { id },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(percentage !== undefined && { percentage }),
-        ...(isActive !== undefined && { isActive }),
-      },
-    });
-
-    return NextResponse.json({ success: true, data: taxRate });
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
+  return NextResponse.json({ success: true, data: taxRate });
+});

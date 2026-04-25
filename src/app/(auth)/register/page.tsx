@@ -19,6 +19,7 @@ import { t } from "@/lib/locales";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const [businessName, setBusinessName] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,7 +33,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ businessName, name, email, password }),
       });
 
       const data = await res.json();
@@ -42,7 +43,8 @@ export default function RegisterPage() {
         return;
       }
 
-      router.push("/login?registered=true");
+      toast.success(t("auth.accountCreatedSuccess"));
+      router.push("/dashboard");
     } catch {
       toast.error(t("auth.somethingWentWrong"));
     } finally {
@@ -60,6 +62,18 @@ export default function RegisterPage() {
       </CardHeader>
       <form onSubmit={onSubmit}>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="businessName">{t("auth.businessName")}</Label>
+            <Input
+              id="businessName"
+              type="text"
+              placeholder={t("auth.businessNamePlaceholder")}
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              required
+              disabled={isLoading}
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="name">{t("common.name")}</Label>
             <Input

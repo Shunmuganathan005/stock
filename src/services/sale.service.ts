@@ -22,11 +22,13 @@ interface CreateSaleData {
   items: CreateSaleItem[];
 }
 
-export async function listSales(params: ListSalesParams) {
+export async function listSales(params: ListSalesParams, orgId: string) {
   const { search, paymentStatus, customerId, page = 1, pageSize = 20 } = params;
   const skip = (page - 1) * pageSize;
 
-  const where: Prisma.SaleWhereInput = {};
+  const where: Prisma.SaleWhereInput = {
+    organizationId: orgId,
+  };
 
   if (search) {
     where.OR = [
@@ -69,7 +71,7 @@ export async function listSales(params: ListSalesParams) {
   };
 }
 
-export async function getSale(id: string) {
+export async function getSale(id: string, orgId: string) {
   const sale = await prisma.sale.findUnique({
     where: { id },
     include: {
@@ -92,15 +94,16 @@ export async function getSale(id: string) {
     },
   });
 
-  if (!sale) {
+  if (!sale || sale.organizationId !== orgId) {
     throw new Error("Sale not found");
   }
 
   return sale;
 }
 
-export async function getNextSaleNumber(): Promise<string> {
+export async function getNextSaleNumber(orgId: string): Promise<string> {
   const lastSale = await prisma.sale.findFirst({
+    where: { organizationId: orgId },
     orderBy: { saleNumber: "desc" },
     select: { saleNumber: true },
   });
@@ -114,24 +117,24 @@ export async function getNextSaleNumber(): Promise<string> {
   return `SALE-${nextNumber.toString().padStart(4, "0")}`;
 }
 
-export async function createSale(data: CreateSaleData, userId: string) {
+export async function createSale(data: CreateSaleData, userId: string, orgId: string) {
   const { customerId, notes, items } = data;
 
   if (!items || items.length === 0) {
     throw new Error("At least one item is required");
   }
 
-  // Verify customer exists
+  // Verify customer exists and belongs to org
   const customer = await prisma.customer.findUnique({
     where: { id: customerId },
   });
-  if (!customer) {
+  if (!customer || customer.organizationId !== orgId) {
     throw new Error("Customer not found");
   }
 
   return prisma.$transaction(async (tx) => {
-    // Generate sale number
-    const saleNumber = await getNextSaleNumberInTx(tx);
+    // Generate sale number scoped to org
+    const saleNumber = await getNextSaleNumberInTx(tx, orgId);
 
     // Process each item: validate stock and calculate totals
     let subtotal = 0;
@@ -146,7 +149,7 @@ export async function createSale(data: CreateSaleData, userId: string) {
         where: { id: item.productId },
       });
 
-      if (!product) {
+      if (!product || product.organizationId !== orgId) {
         throw new Error(`Product not found: ${item.productId}`);
       }
 
@@ -189,12 +192,14 @@ export async function createSale(data: CreateSaleData, userId: string) {
           productId: item.productId,
           type: "OUT_OF_STOCK",
           message: `"${product.name}" is out of stock (0 remaining)`,
+          organizationId: orgId,
         });
       } else if (newStock < product.minStockLevel) {
         alertsToCreate.push({
           productId: item.productId,
           type: "LOW_STOCK",
           message: `"${product.name}" is below minimum stock level (${newStock} remaining, minimum is ${product.minStockLevel})`,
+          organizationId: orgId,
         });
       }
     }
@@ -213,6 +218,7 @@ export async function createSale(data: CreateSaleData, userId: string) {
         grandTotal,
         notes: notes ?? "",
         createdById: userId,
+        organizationId: orgId,
         items: {
           createMany: {
             data: saleItemsData,
@@ -259,9 +265,11 @@ export async function createSale(data: CreateSaleData, userId: string) {
  * Generate next sale number inside a Prisma transaction to avoid race conditions.
  */
 async function getNextSaleNumberInTx(
-  tx: Prisma.TransactionClient
+  tx: Prisma.TransactionClient,
+  orgId: string
 ): Promise<string> {
   const lastSale = await tx.sale.findFirst({
+    where: { organizationId: orgId },
     orderBy: { saleNumber: "desc" },
     select: { saleNumber: true },
   });

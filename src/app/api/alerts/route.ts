@@ -1,24 +1,21 @@
 import { NextResponse } from "next/server";
-import { requireAuth, handleApiError } from "@/lib/permissions";
+import { withSession } from "@/lib/auth";
 import * as alertService from "@/services/alert.service";
 
-export async function GET(request: Request) {
-  try {
-    await requireAuth();
+export const GET = withSession(async (request, user) => {
+  const { searchParams } = new URL(request.url);
+  const page = parseInt(searchParams.get("page") || "1");
+  const pageSize = parseInt(searchParams.get("pageSize") || "20");
+  const isRead = searchParams.get("isRead");
 
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const pageSize = parseInt(searchParams.get("pageSize") || "20");
-    const isRead = searchParams.get("isRead");
-
-    const result = await alertService.listAlerts({
+  const result = await alertService.listAlerts(
+    {
       page,
       pageSize,
       isRead: isRead === null ? undefined : isRead === "true",
-    });
+    },
+    user.organizationId
+  );
 
-    return NextResponse.json({ success: true, data: result });
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
+  return NextResponse.json({ success: true, data: result });
+});

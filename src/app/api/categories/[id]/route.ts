@@ -1,42 +1,28 @@
 import { NextResponse } from "next/server";
-import { requirePermission, requireAuth, handleApiError } from "@/lib/permissions";
+import { withPermission } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import * as categoryService from "@/services/category.service";
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await requirePermission(PERMISSIONS.PRODUCTS_EDIT);
+export const PUT = withPermission(PERMISSIONS.PRODUCTS_EDIT, async (request, user) => {
+  const url = new URL(request.url);
+  const id = url.pathname.split('/').at(-1)!;
+  const body = await request.json();
+  const { name, description } = body;
 
-    const { id } = await params;
-    const body = await request.json();
-    const { name, description } = body;
+  const category = await categoryService.updateCategory(
+    id,
+    { name, description },
+    user.organizationId
+  );
 
-    const category = await categoryService.updateCategory(id, {
-      name,
-      description,
-    });
+  return NextResponse.json({ success: true, data: category });
+});
 
-    return NextResponse.json({ success: true, data: category });
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
+export const DELETE = withPermission(PERMISSIONS.PRODUCTS_DELETE, async (request, user) => {
+  const url = new URL(request.url);
+  const id = url.pathname.split('/').at(-1)!;
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await requirePermission(PERMISSIONS.PRODUCTS_DELETE);
+  await categoryService.deleteCategory(id, user.organizationId);
 
-    const { id } = await params;
-    await categoryService.deleteCategory(id);
-
-    return NextResponse.json({ success: true, message: "Category deleted" });
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
+  return NextResponse.json({ success: true, message: "Category deleted" });
+});

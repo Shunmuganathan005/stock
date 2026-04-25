@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
+import { useSession, useLogout } from "@/hooks/use-session";
 import { Bell, LogOut, User } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,8 +23,8 @@ interface HeaderProps {
 }
 
 export function Header({ title, alertCount }: HeaderProps) {
-  const { data: session } = useSession();
-  const user = session?.user;
+  const { user } = useSession();
+  const logout = useLogout();
 
   const initials = user?.name
     ? user.name
@@ -84,7 +84,7 @@ export function Header({ title, alertCount }: HeaderProps) {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={() => logout()}
               className="flex items-center gap-2"
             >
               <LogOut className="size-4" />

@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -37,13 +36,15 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (result?.error) {
+      const result = await res.json();
+
+      if (!result.success) {
         toast.error(result.error);
         return;
       }

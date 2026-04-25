@@ -1,51 +1,35 @@
 import { NextResponse } from "next/server";
-import { requirePermission, handleApiError } from "@/lib/permissions";
+import { withPermission } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import * as userService from "@/services/user.service";
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await requirePermission(PERMISSIONS.USERS_MANAGE);
+export const GET = withPermission(PERMISSIONS.USERS_MANAGE, async (request, user) => {
+  const url = new URL(request.url);
+  const id = url.pathname.split('/').at(-1)!;
 
-    const { id } = await params;
-    const user = await userService.getUser(id);
+  const found = await userService.getUser(id, user.organizationId);
 
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: "User not found" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ success: true, data: user });
-  } catch (error) {
-    return handleApiError(error);
+  if (!found) {
+    return NextResponse.json(
+      { success: false, error: "User not found" },
+      { status: 404 }
+    );
   }
-}
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await requirePermission(PERMISSIONS.USERS_MANAGE);
+  return NextResponse.json({ success: true, data: found });
+});
 
-    const { id } = await params;
-    const body = await request.json();
-    const { name, email, roleId, isActive } = body;
+export const PUT = withPermission(PERMISSIONS.USERS_MANAGE, async (request, user) => {
+  const url = new URL(request.url);
+  const id = url.pathname.split('/').at(-1)!;
+  const body = await request.json();
+  const { name, email, roleId, isActive } = body;
 
-    const user = await userService.updateUser(id, {
-      name,
-      email,
-      roleId,
-      isActive,
-    });
+  const updated = await userService.updateUser(
+    id,
+    { name, email, roleId, isActive },
+    user.organizationId
+  );
 
-    return NextResponse.json({ success: true, data: user });
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
+  return NextResponse.json({ success: true, data: updated });
+});

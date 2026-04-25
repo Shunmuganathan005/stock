@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
-import { prisma } from "@/lib/db";
+import { getSessionUser, getUserPermissions } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/sidebar";
 
 export default async function DashboardLayout({
@@ -9,29 +7,13 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession(authOptions);
+  const user = await getSessionUser();
 
-  if (!session?.user) {
+  if (!user) {
     redirect("/login");
   }
 
-  // Fetch user permissions from the database
-  const user = await prisma.user.findUnique({
-    where: { id: (session.user as { id: string }).id },
-    include: {
-      role: {
-        include: {
-          rolePermissions: {
-            include: { permission: true },
-          },
-        },
-      },
-    },
-  });
-
-  const permissions = user
-    ? user.role.rolePermissions.map((rp: { permission: { name: string } }) => rp.permission.name)
-    : [];
+  const permissions = await getUserPermissions(user.id);
 
   return (
     <div className="flex min-h-screen">

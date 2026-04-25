@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/hooks/use-session";
 import {
   LayoutDashboard,
   Package,
@@ -12,9 +12,14 @@ import {
   Bell,
   Settings,
   Shield,
+  Truck,
+  UserCheck,
+  MapPin,
+  Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/locales";
+import { PERMISSIONS } from "@/lib/constants/permissions";
 
 interface NavItem {
   label: string;
@@ -29,6 +34,7 @@ const mainNavItems: NavItem[] = [
   { label: t("nav.categories"), href: "/categories", icon: Tags },
   { label: t("nav.customers"), href: "/customers", icon: Users },
   { label: t("nav.sales"), href: "/sales", icon: ShoppingCart },
+  { label: t("nav.collections"), href: "/collections", icon: Truck, permission: PERMISSIONS.COLLECTIONS_VIEW },
   { label: t("nav.alerts"), href: "/alerts", icon: Bell },
 ];
 
@@ -45,6 +51,24 @@ const settingsNavItems: NavItem[] = [
     icon: Shield,
     permission: "roles.manage",
   },
+  {
+    label: t("nav.salespersons"),
+    href: "/settings/salespersons",
+    icon: UserCheck,
+    permission: PERMISSIONS.COLLECTIONS_MANAGE,
+  },
+  {
+    label: t("nav.places"),
+    href: "/settings/places",
+    icon: MapPin,
+    permission: PERMISSIONS.COLLECTIONS_MANAGE,
+  },
+  {
+    label: t("nav.vendors"),
+    href: "/settings/vendors",
+    icon: Store,
+    permission: PERMISSIONS.COLLECTIONS_MANAGE,
+  },
 ];
 
 interface SidebarProps {
@@ -53,9 +77,11 @@ interface SidebarProps {
 
 export function Sidebar({ permissions }: SidebarProps) {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { user } = useSession();
 
-  const user = session?.user;
+  const visibleMainItems = mainNavItems.filter(
+    (item) => !item.permission || permissions.includes(item.permission)
+  );
 
   const visibleSettingsItems = settingsNavItems.filter(
     (item) => !item.permission || permissions.includes(item.permission)
@@ -76,7 +102,7 @@ export function Sidebar({ permissions }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <div className="space-y-1">
-          {mainNavItems.map((item) => {
+          {visibleMainItems.map((item) => {
             const isActive =
               pathname === item.href ||
               (item.href !== "/dashboard" && pathname.startsWith(item.href));

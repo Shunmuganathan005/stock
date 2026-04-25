@@ -7,11 +7,13 @@ interface ListAlertsParams {
   pageSize?: number;
 }
 
-export async function listAlerts(params: ListAlertsParams) {
+export async function listAlerts(params: ListAlertsParams, orgId: string) {
   const { isRead, page = 1, pageSize = 20 } = params;
   const skip = (page - 1) * pageSize;
 
-  const where: Prisma.AlertWhereInput = {};
+  const where: Prisma.AlertWhereInput = {
+    organizationId: orgId,
+  };
 
   if (isRead !== undefined) {
     where.isRead = isRead;
@@ -39,16 +41,16 @@ export async function listAlerts(params: ListAlertsParams) {
   };
 }
 
-export async function getUnreadCount() {
+export async function getUnreadCount(orgId: string) {
   return prisma.alert.count({
-    where: { isRead: false },
+    where: { isRead: false, organizationId: orgId },
   });
 }
 
-export async function markAsRead(id: string) {
+export async function markAsRead(id: string, orgId: string) {
   const alert = await prisma.alert.findUnique({ where: { id } });
 
-  if (!alert) {
+  if (!alert || alert.organizationId !== orgId) {
     throw new Error("Alert not found");
   }
 
@@ -58,9 +60,9 @@ export async function markAsRead(id: string) {
   });
 }
 
-export async function markAllAsRead() {
+export async function markAllAsRead(orgId: string) {
   return prisma.alert.updateMany({
-    where: { isRead: false },
+    where: { isRead: false, organizationId: orgId },
     data: { isRead: true },
   });
 }

@@ -7,12 +7,13 @@ interface ListCustomersParams {
   pageSize?: number;
 }
 
-export async function listCustomers(params: ListCustomersParams) {
+export async function listCustomers(params: ListCustomersParams, orgId: string) {
   const { search, page = 1, pageSize = 20 } = params;
   const skip = (page - 1) * pageSize;
 
   const where: Prisma.CustomerWhereInput = {
     isActive: true,
+    organizationId: orgId,
   };
 
   if (search) {
@@ -42,7 +43,7 @@ export async function listCustomers(params: ListCustomersParams) {
   };
 }
 
-export async function getCustomer(id: string) {
+export async function getCustomer(id: string, orgId: string) {
   const customer = await prisma.customer.findUnique({
     where: { id },
     include: {
@@ -52,24 +53,40 @@ export async function getCustomer(id: string) {
     },
   });
 
-  if (!customer) {
+  if (!customer || customer.organizationId !== orgId) {
     throw new Error("Customer not found");
   }
 
   return customer;
 }
 
-export async function createCustomer(data: Prisma.CustomerCreateInput) {
-  return prisma.customer.create({ data });
+export async function createCustomer(
+  data: {
+    name: string;
+    businessName?: string;
+    gstin?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+  },
+  orgId: string
+) {
+  return prisma.customer.create({
+    data: {
+      ...data,
+      organizationId: orgId,
+    },
+  });
 }
 
 export async function updateCustomer(
   id: string,
-  data: Prisma.CustomerUpdateInput
+  data: Prisma.CustomerUpdateInput,
+  orgId: string
 ) {
   const customer = await prisma.customer.findUnique({ where: { id } });
 
-  if (!customer) {
+  if (!customer || customer.organizationId !== orgId) {
     throw new Error("Customer not found");
   }
 
@@ -79,10 +96,10 @@ export async function updateCustomer(
   });
 }
 
-export async function deleteCustomer(id: string) {
+export async function deleteCustomer(id: string, orgId: string) {
   const customer = await prisma.customer.findUnique({ where: { id } });
 
-  if (!customer) {
+  if (!customer || customer.organizationId !== orgId) {
     throw new Error("Customer not found");
   }
 

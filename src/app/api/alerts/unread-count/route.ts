@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAuth, handleApiError } from "@/lib/permissions";
+import { withSession } from "@/lib/auth";
 import * as alertService from "@/services/alert.service";
 
-export async function GET() {
-  try {
-    await requireAuth();
+export const GET = withSession(async (request, user) => {
+  const count = await alertService.getUnreadCount(user.organizationId);
 
-    const count = await alertService.getUnreadCount();
-
-    return NextResponse.json({ success: true, data: { count } });
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
+  return NextResponse.json({ success: true, data: { count } });
+});

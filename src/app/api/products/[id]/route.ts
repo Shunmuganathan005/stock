@@ -1,71 +1,50 @@
 import { NextResponse } from "next/server";
-import { requirePermission, requireAuth, handleApiError } from "@/lib/permissions";
+import { withSession, withPermission } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { updateProductSchema } from "@/lib/validations/product";
 import * as productService from "@/services/product.service";
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await requireAuth();
+export const GET = withSession(async (request, user) => {
+  const url = new URL(request.url);
+  const id = url.pathname.split("/").at(-1)!;
 
-    const { id } = await params;
-    const product = await productService.getProduct(id);
+  const product = await productService.getProduct(id, user.organizationId);
 
-    if (!product) {
-      return NextResponse.json(
-        { success: false, error: "Product not found" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ success: true, data: product });
-  } catch (error) {
-    return handleApiError(error);
+  if (!product) {
+    return NextResponse.json(
+      { success: false, error: "Product not found" },
+      { status: 404 }
+    );
   }
-}
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await requirePermission(PERMISSIONS.PRODUCTS_EDIT);
+  return NextResponse.json({ success: true, data: product });
+});
 
-    const { id } = await params;
-    const body = await request.json();
-    const data = updateProductSchema.parse(body);
+export const PUT = withPermission(PERMISSIONS.PRODUCTS_EDIT, async (request, user) => {
+  const url = new URL(request.url);
+  const id = url.pathname.split("/").at(-1)!;
 
-    const { categoryId, taxRateId, ...rest } = data;
-    const updateData: import("@prisma/client").Prisma.ProductUpdateInput = { ...rest };
-    if (categoryId) {
-      updateData.category = { connect: { id: categoryId } };
-    }
-    if (taxRateId) {
-      updateData.taxRate = { connect: { id: taxRateId } };
-    }
-    const product = await productService.updateProduct(id, updateData);
+  const body = await request.json();
+  const data = updateProductSchema.parse(body);
 
-    return NextResponse.json({ success: true, data: product });
-  } catch (error) {
-    return handleApiError(error);
+  const { categoryId, taxRateId, ...rest } = data;
+  const updateData: import("@prisma/client").Prisma.ProductUpdateInput = { ...rest };
+  if (categoryId) {
+    updateData.category = { connect: { id: categoryId } };
   }
-}
-
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await requirePermission(PERMISSIONS.PRODUCTS_DELETE);
-
-    const { id } = await params;
-    await productService.deleteProduct(id);
-
-    return NextResponse.json({ success: true, message: "Product deleted" });
-  } catch (error) {
-    return handleApiError(error);
+  if (taxRateId) {
+    updateData.taxRate = { connect: { id: taxRateId } };
   }
-}
+  const product = await productService.updateProduct(id, updateData, user.organizationId);
+
+  return NextResponse.json({ success: true, data: product });
+});
+
+export const DELETE = withPermission(PERMISSIONS.PRODUCTS_DELETE, async (request, user) => {
+  const url = new URL(request.url);
+  const id = url.pathname.split("/").at(-1)!;
+
+  await productService.deleteProduct(id, user.organizationId);
+
+  return NextResponse.json({ success: true, message: "Product deleted" });
+});
