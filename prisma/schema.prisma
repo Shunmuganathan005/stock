@@ -281,6 +281,8 @@ model Salesperson {
   organization Organization      @relation(fields: [organizationId], references: [id])
   places       SalespersonPlace[]
   collections  Collection[]
+
+  @@unique([name, organizationId])
 }
 
 model Place {
@@ -320,6 +322,8 @@ model Vendor {
   place           Place           @relation(fields: [placeId], references: [id])
   products        VendorProduct[]
   collectionItems CollectionItem[]
+
+  @@unique([name, placeId])
 }
 
 model VendorProduct {
@@ -335,7 +339,7 @@ model VendorProduct {
 
 model Collection {
   id             String   @id @default(cuid())
-  date           DateTime
+  date           DateTime @db.Date
   salespersonId  String
   totalQuantity  Float    @default(0)
   totalAmount    Float    @default(0)
@@ -362,4 +366,6 @@ model CollectionItem {
   collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   vendor     Vendor     @relation(fields: [vendorId], references: [id])
   product    Product    @relation(fields: [productId], references: [id])
+
+  @@unique([collectionId, vendorId, productId])
 }

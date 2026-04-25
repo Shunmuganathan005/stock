@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+const SEED_ORG_ID = "seed-default-org-00000000";
+
 const PERMISSIONS = [
   { name: "dashboard.view", description: "View dashboard", module: "dashboard" },
   { name: "products.view", description: "View products", module: "products" },
@@ -60,7 +62,7 @@ const CATEGORIES = ["Electronics", "Clothing", "Food & Beverages", "Office Suppl
 async function main() {
   console.log("Seeding database...");
 
-  // 1. Create global permissions
+  // 1. Create global permissions (idempotent via upsert)
   for (const perm of PERMISSIONS) {
     await prisma.permission.upsert({
       where: { name: perm.name },
@@ -70,17 +72,21 @@ async function main() {
   }
   console.log("Permissions created");
 
-  // 2. Create default organization
-  const org = await prisma.organization.create({
-    data: { name: "Default Organization" },
+  // 2. Create default organization (idempotent via fixed ID upsert)
+  const org = await prisma.organization.upsert({
+    where: { id: SEED_ORG_ID },
+    update: {},
+    create: { id: SEED_ORG_ID, name: "Default Organization" },
   });
   console.log("Organization created");
 
-  // 3. Create roles scoped to org
+  // 3. Create roles scoped to org (idempotent via upsert on unique [name, organizationId])
   const roleMap: Record<string, string> = {};
   for (const [roleName, roleData] of Object.entries(ROLES)) {
-    const role = await prisma.role.create({
-      data: {
+    const role = await prisma.role.upsert({
+      where: { name_organizationId: { name: roleName, organizationId: org.id } },
+      update: {},
+      create: {
         name: roleName,
         description: roleData.description,
         organizationId: org.id,
@@ -88,7 +94,7 @@ async function main() {
     });
     roleMap[roleName] = role.id;
 
-    // Assign permissions
+    // Assign permissions (skip existing ones)
     const permissions = await prisma.permission.findMany({
       where: { name: { in: roleData.permissions } },
       select: { id: true },
@@ -98,36 +104,44 @@ async function main() {
         roleId: role.id,
         permissionId: p.id,
       })),
+      skipDuplicates: true,
     });
   }
   console.log("Roles created");
 
-  // 4. Create admin user in org
+  // 4. Create admin user in org (idempotent via findUnique check)
   const hashedPassword = await bcrypt.hash("admin123", 12);
-  await prisma.user.create({
-    data: {
-      name: "Admin",
-      email: "admin@stock.com",
-      hashedPassword,
-      roleId: roleMap.Admin,
-      organizationId: org.id,
-      isOwner: true,
-    },
-  });
+  const existingAdmin = await prisma.user.findUnique({ where: { email: "admin@stock.com" } });
+  if (!existingAdmin) {
+    await prisma.user.create({
+      data: {
+        name: "Admin",
+        email: "admin@stock.com",
+        hashedPassword,
+        roleId: roleMap.Admin,
+        organizationId: org.id,
+        isOwner: true,
+      },
+    });
+  }
   console.log("Admin user created (admin@stock.com / admin123)");
 
-  // 5. Create tax rates scoped to org
+  // 5. Create tax rates scoped to org (idempotent via upsert on unique [name, organizationId])
   for (const tax of TAX_RATES) {
-    await prisma.taxRate.create({
-      data: { ...tax, organizationId: org.id },
+    await prisma.taxRate.upsert({
+      where: { name_organizationId: { name: tax.name, organizationId: org.id } },
+      update: {},
+      create: { ...tax, organizationId: org.id },
     });
   }
   console.log("Tax rates created");
 
-  // 6. Create categories scoped to org
+  // 6. Create categories scoped to org (idempotent via upsert on unique [name, organizationId])
   for (const name of CATEGORIES) {
-    await prisma.category.create({
-      data: { name, organizationId: org.id },
+    await prisma.category.upsert({
+      where: { name_organizationId: { name, organizationId: org.id } },
+      update: {},
+      create: { name, organizationId: org.id },
     });
   }
   console.log("Categories created");
