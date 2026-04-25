@@ -3,6 +3,8 @@ import { withPermission } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import * as collectionService from "@/services/collection.service";
 
+type ExportItem = Awaited<ReturnType<typeof collectionService.getExportData>>[number];
+
 export const GET = withPermission(
   PERMISSIONS.COLLECTIONS_VIEW,
   async (request, user) => {
@@ -69,7 +71,7 @@ export const GET = withPermission(
     const escape = (val: string) => `"${val.replace(/"/g, '""')}"`;
 
     const headers = ["Date", "Salesperson", "Place", "Vendor", "Product", "Quantity", "Rate", "Amount"];
-    const rows = items.map((item) => [
+    const rows = items.map((item: ExportItem) => [
       escape(item.collection.date.toISOString().split("T")[0]),
       escape(item.collection.salesperson.name),
       escape(item.vendor.place.name),
