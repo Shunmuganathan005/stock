@@ -49,7 +49,7 @@ export const GET = withPermission(
 );
 
 export const POST = withPermission(
-  PERMISSIONS.COLLECTIONS_MANAGE,
+  PERMISSIONS.COLLECTIONS_CREATE,
   async (request, user) => {
     const body = await request.json();
     const parsed = createCollectionSchema.safeParse(body);

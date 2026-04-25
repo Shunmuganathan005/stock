@@ -39,7 +39,7 @@ export const GET = withPermission(
 );
 
 export const PUT = withPermission(
-  PERMISSIONS.COLLECTIONS_MANAGE,
+  PERMISSIONS.COLLECTIONS_CREATE,
   async (request, user) => {
     const id = new URL(request.url).pathname.split("/").at(-1)!;
 
@@ -73,7 +73,7 @@ export const PUT = withPermission(
 );
 
 export const DELETE = withPermission(
-  PERMISSIONS.COLLECTIONS_MANAGE,
+  PERMISSIONS.COLLECTIONS_CREATE,
   async (request, user) => {
     const id = new URL(request.url).pathname.split("/").at(-1)!;
 
