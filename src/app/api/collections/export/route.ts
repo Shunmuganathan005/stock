@@ -80,13 +80,14 @@ export const GET = withPermission(
       item.amount.toString(),
     ]);
 
-    const csvContent = [headers, ...rows].map((r) => r.join(",")).join("\n");
+    const normalizedStartDate = startDate.toISOString().split("T")[0];
+    const csvContent = [headers, ...rows].map((r) => r.join(",")).join("\r\n");
 
     return new NextResponse(csvContent, {
       status: 200,
       headers: {
         "Content-Type": "text/csv",
-        "Content-Disposition": `attachment; filename="collections-export-${startDateParam}.csv"`,
+        "Content-Disposition": `attachment; filename="collections-export-${normalizedStartDate}.csv"`,
       },
     });
   }

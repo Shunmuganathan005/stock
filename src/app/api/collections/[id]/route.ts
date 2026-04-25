@@ -60,12 +60,12 @@ export const PUT = withPermission(
       );
       return NextResponse.json({ success: true, data: collection });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Internal server error";
-      if (message.includes("not found")) {
-        return NextResponse.json(
-          { success: false, error: "Collection not found" },
-          { status: 404 }
-        );
+      const message = error instanceof Error ? error.message : "An error occurred";
+      if (message.toLowerCase() === "collection not found" || message.toLowerCase().includes("salesperson not found")) {
+        return NextResponse.json({ success: false, error: message }, { status: 404 });
+      }
+      if (message.toLowerCase().includes("not found") || message.toLowerCase().includes("at least one item")) {
+        return NextResponse.json({ success: false, error: message }, { status: 422 });
       }
       throw error;
     }

@@ -76,9 +76,12 @@ export const POST = withPermission(
       );
       return NextResponse.json({ success: true, data: collection }, { status: 201 });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Internal server error";
-      if (message.includes("already exists")) {
+      const message = error instanceof Error ? error.message : "An error occurred";
+      if (message.toLowerCase().includes("already exists")) {
         return NextResponse.json({ success: false, error: message }, { status: 409 });
+      }
+      if (message.toLowerCase().includes("not found") || message.toLowerCase().includes("at least one item")) {
+        return NextResponse.json({ success: false, error: message }, { status: 422 });
       }
       throw error;
     }
